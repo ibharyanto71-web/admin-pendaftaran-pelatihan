@@ -89,10 +89,9 @@ $("regForm").onsubmit=async e=>{
 
   const b=$("regBtn");
   b.disabled=true;
-  b.textContent="Mengirim...";
+  b.textContent="Memproses...";
 
   try{
-
     const r=await apiGet("register",{
       name:$("name").value.trim(),
       age:$("age").value,
@@ -103,23 +102,28 @@ $("regForm").onsubmit=async e=>{
       history:$("history").value.trim()
     });
 
+    console.log("REGISTER RESPONSE:",r);
+
     if(!r.ok){
-      throw Error(r.error||"Pendaftaran gagal.");
+      throw new Error(r.error||"Pendaftaran gagal.");
     }
 
-    $("regForm").classList.add("hidden");
-    $("regSuccess").classList.remove("hidden");
+    $("regForm").reset();
 
-    $("regSuccess").innerHTML=
-      "<b>Pendaftaran berhasil!</b><br>"+
-      "Nomor pasien: <strong>"+
-      esc(r.id)+
-      "</strong><br><br>"+
-      "Silakan simpan nomor pasien ini dan tunggu petugas.";
+    alert(
+      "PENDAFTARAN BERHASIL\n\n"+
+      "ID Pasien: "+r.id+
+      "\n\nSimpan ID pasien tersebut untuk melihat perkembangan terapi."
+    );
 
-  }catch(e){
+  }catch(err){
 
-    alert(e.message||"Pendaftaran gagal.");
+    console.error("REGISTER ERROR:",err);
+
+    alert(
+      "Pendaftaran gagal.\n\n"+
+      (err.message||err)
+    );
 
   }finally{
 

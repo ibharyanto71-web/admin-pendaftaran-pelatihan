@@ -84,7 +84,50 @@ async function openPatient(id){if(!adminToken)return;let p=all.find(x=>x.id===id
 function renderJournal(){let p=current,status=p.status||"MENUNGGU";$("journalContent").innerHTML=`<div class="journal"><div class="jhead"><div style="font-size:11px;letter-spacing:2px;font-weight:900">ASDTY • BAKTI PENGOBATAN</div><h2>Catatan Pelayanan</h2><div>${esc(p.id)} • ${esc(p.date)} ${esc(p.time)}</div></div><div class="jbody"><div class="box"><b>Pasien</b><p><strong>${esc(p.name)}</strong> • ${esc(p.age||"-")} tahun • ${esc(p.gender||"-")}<br>WhatsApp: ${esc(p.phone||"-")}<br>${esc(p.address||"-")}</p></div><div class="box"><b>Keluhan utama</b><p>${esc(p.complaint||"-")}</p></div><div class="grid"><label>Status pelayanan<select id="status"><option value="MENUNGGU">Menunggu</option><option value="SEDANG_TERAPI">Sedang terapi</option><option value="SELESAI">Selesai</option></select></label><label>Tekanan darah<input id="bp" value="${esc(p.bp||"")}"></label></div><div class="grid"><label>Nyeri awal<input id="painBefore" type="number" min="0" max="10" value="${esc(p.painBefore||0)}"></label><label>Nyeri setelah terapi<input id="painAfter" type="number" min="0" max="10" value="${esc(p.painAfter||0)}"></label></div><label>Kondisi awal / pemeriksaan<textarea id="initial" rows="4">${esc(p.initial||"")}</textarea></label><label>Terapi yang diberikan<textarea id="therapy" rows="4">${esc(p.therapy||"")}</textarea></label><label>Area / titik terapi<textarea id="areas" rows="3">${esc(p.areas||"")}</textarea></label><label>Respons terapi<select id="response"><option>Baik</option><option>Cukup</option><option>Perlu pemantauan</option></select></label><label>Catatan terapis<textarea id="notes" rows="4">${esc(p.notes||"")}</textarea></label><label>Saran di rumah<textarea id="advice" rows="4">${esc(p.advice||"")}</textarea></label><button class="btn primary full" onclick="saveTherapy()">Simpan Jurnal & Status</button><div id="saveMsg" class="success hidden" style="margin-top:10px"></div><div class="nav no-print" style="margin-top:12px"><button class="btn secondary" onclick="show('admin')">← Kembali</button><button class="btn secondary" onclick="window.print()">Cetak / PDF</button><button class="btn wa" onclick="sendWA()">Kirim WhatsApp</button></div></div></div>`;$("status").value=status;$("response").value=p.response||"Baik"}
 async function saveTherapy(){try{let x={action:"therapy",token:adminToken,id:current.id,status:$("status").value,bp:$("bp").value,painBefore:$("painBefore").value,initial:$("initial").value,therapy:$("therapy").value,areas:$("areas").value,painAfter:$("painAfter").value,response:$("response").value,notes:$("notes").value,advice:$("advice").value};let r=await apiPost(x);if(!r.ok)throw Error(r.error);Object.assign(current,x);let i=all.findIndex(p=>p.id===current.id);if(i>=0)all[i]=current;$("saveMsg").classList.remove("hidden");$("saveMsg").textContent="Jurnal dan status berhasil disimpan ke Google Sheets."}catch(e){msg("Gagal menyimpan: "+e.message)}}
 function sendWA(){let n=(current.phone||"").replace(/\D/g,"");if(n.startsWith("0"))n="62"+n.slice(1);if(!n)return msg("Nomor WhatsApp belum tersedia.");let t=`Halo Bapak/Ibu ${current.name}.%0A%0ABerikut ringkasan catatan pelayanan Bakti Pengobatan ASDTY.%0ANomor pasien: ${current.id}%0AKeluhan: ${current.complaint||"-"}%0ASkala nyeri: ${$("painBefore").value||0} → ${$("painAfter").value||0}/10%0ATerapi: ${$("therapy").value||"-"}%0ARespons: ${$("response").value||"-"}%0ASaran: ${$("advice").value||"-"}%0A%0ATerima kasih. — ASDTY`;window.open("https://wa.me/"+n+"?text="+t,"_blank")}
-$("regForm").onsubmit=async e=>{e.preventDefault();const btn=e.submitter;try{btn.disabled=true;btn.textContent="Mengirim...";let r=await apiPost({action:"register",name:$("name").value.trim(),age:$("age").value,gender:$("gender").value,phone:$("phone").value.trim(),address:$("address").value.trim(),complaint:$("complaint").value.trim(),history:$("history").value.trim()});if(!r.ok)throw Error(r.error);$("regForm").classList.add("hidden");$("regSuccess").classList.remove("hidden");$("regSuccess").innerHTML="<b>Pendaftaran berhasil.</b><br>ID Pasien: <strong>"+esc(r.id)+"</strong><br><br>Silakan simpan ID Pasien ini dan tunggu petugas."}catch(e){alert(e.message)}finally{btn.disabled=false;btn.textContent="Kirim Pendaftaran"}};
+$("regForm").onsubmit=async e=>{
+  e.preventDefault();
+
+  const b=$("regBtn");
+  b.disabled=true;
+  b.textContent="Mengirim...";
+
+  try{
+
+    const r=await apiGet("register",{
+      name:$("name").value.trim(),
+      age:$("age").value,
+      gender:$("gender").value,
+      phone:$("phone").value.trim(),
+      address:$("address").value.trim(),
+      complaint:$("complaint").value.trim(),
+      history:$("history").value.trim()
+    });
+
+    if(!r.ok){
+      throw Error(r.error||"Pendaftaran gagal.");
+    }
+
+    $("regForm").classList.add("hidden");
+    $("regSuccess").classList.remove("hidden");
+
+    $("regSuccess").innerHTML=
+      "<b>Pendaftaran berhasil!</b><br>"+
+      "Nomor pasien: <strong>"+
+      esc(r.id)+
+      "</strong><br><br>"+
+      "Silakan simpan nomor pasien ini dan tunggu petugas.";
+
+  }catch(e){
+
+    alert(e.message||"Pendaftaran gagal.");
+
+  }finally{
+
+    b.disabled=false;
+    b.textContent="Kirim Pendaftaran";
+
+  }
+};
 function refreshQR(){let u=location.origin+"/?daftar=1";$("appUrl").value=u;$("qr").src="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data="+encodeURIComponent(u)}
 function printQR(){let w=open("","_blank");w.document.write(`<html><body style="font-family:Arial;text-align:center;padding:30px"><h1>BAKTI PENGOBATAN ASDTY</h1><h2>SCAN UNTUK PENDAFTARAN</h2><img src="${$("qr").src}" style="width:350px"><p>Scan QR untuk mengisi data pasien</p><script>setTimeout(()=>print(),500)<\/script></body></html>`);w.document.close()}
 (function(){if(isAdminPath()){show("admin")}else{document.body.classList.add("public-mode");show("public")}})();
